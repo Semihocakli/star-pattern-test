@@ -37,10 +37,11 @@ jobs:
       env:
         ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
       run: |
+        # Git yapılandırması
         git config --local user.name "github-actions"
         git config --local user.email "github-actions@users.noreply.github.com"
-        
-        # Eğer bu bir PR'den geliyorsa, HEAD referansını al
+
+        # Aktif branch'i al
         BRANCH_NAME="${{ github.head_ref }}"
         
         # Eğer push olayıyla çalışıyorsa, aktif branch'i al
@@ -48,7 +49,16 @@ jobs:
           BRANCH_NAME="${{ github.ref_name }}"
         fi
 
-        git checkout $BRANCH_NAME
+        # Branch'in varlığını kontrol et ve oluştur
+        if ! git show-ref --verify --quiet refs/heads/$BRANCH_NAME; then
+          git checkout -b $BRANCH_NAME
+        else
+          git checkout $BRANCH_NAME
+        fi
+
+        # Dosyayı ekle ve commit et
         git add not.txt
-        git commit -m "Test sonuçları eklendi"
+        git commit -m "Test sonuçları eklendi" || echo "Commit yapılmadı; değişiklik yok."
+        
+        # Değişiklikleri uzak branch'e pushla
         git push origin HEAD:$BRANCH_NAME
