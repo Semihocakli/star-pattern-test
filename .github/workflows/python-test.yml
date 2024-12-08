@@ -25,10 +25,7 @@ jobs:
         python -m pip install --upgrade pip
     
     - name: Run tests
-      run: |
-        python -m unittest test_yildiz.py || exit 0
-    
-    - name: Create result file
+      id: test-results
       run: |
         if python -m unittest test_yildiz.py; then
           echo "Tüm testler geçti! 100 puan kazandınız." > not.txt
@@ -36,15 +33,22 @@ jobs:
           echo "Testlerden en az biri başarısız oldu. Puanınız 0." > not.txt
         fi
     
-    - name: Commit result file
+    - name: Commit result file to branch
+      env:
+        ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
       run: |
         git config --local user.name "github-actions"
         git config --local user.email "github-actions@users.noreply.github.com"
+        
+        # Eğer bu bir PR'den geliyorsa, HEAD referansını al
+        BRANCH_NAME="${{ github.head_ref }}"
+        
+        # Eğer push olayıyla çalışıyorsa, aktif branch'i al
+        if [ -z "$BRANCH_NAME" ]; then
+          BRANCH_NAME="${{ github.ref_name }}"
+        fi
+
+        git checkout $BRANCH_NAME
         git add not.txt
-        git commit -m "Test sonuçları güncellendi" || echo "Değişiklik commit edilmedi çünkü dosya zaten mevcut."
-    
-    - name: Upload result
-      uses: actions/upload-artifact@v3
-      with:
-        name: test-result
-        path: not.txt
+        git commit -m "Test sonuçları eklendi"
+        git push origin HEAD:$BRANCH_NAME
